@@ -3,59 +3,56 @@ name: CI
 env:
   CARGO_TERM_COLOR: always
   CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-  # Keep in sync with version in `rust-toolchain.toml` and `xtask/src/main.rs`
-  NIGHTLY: nightly-2026-07-18
 
 on:
   push:
-    branches: [main, next]
+    branches: [main]
   pull_request:
-    branches: [main, next]
+    branches: [main]
 
 jobs:
-  xtask:
-    uses: ./.github/workflows/xtask.yml
-
   style:
     name: Style
     uses: ./.github/workflows/style.yml
 
-  style-custom:
-    name: Style / Custom Scripts
-    needs: xtask
+  fmt:
+    name: Formatting
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
 
-      - name: Get xtask
-        uses: actions/cache@v5
+      - name: Install rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          path: target/debug/xtask
-          key: xtask-${{ hashFiles('Cargo.toml', 'xtask/src/**', 'xtask/Cargo.toml') }}
+          components: rustfmt
 
-      - name: Run lints
-        run: target/debug/xtask ci lint-custom
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Install rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run clippy (default features)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Run clippy (all features)
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
   msrv:
-    name: Minimum Supported Rust Version / ${{ matrix.name }}
-    needs: xtask
+    name: MSRV (1.89)
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - name: Check All Features
-            cmd: msrv-all
-
-          - name: Check Ruma
-            cmd: msrv-ruma
-
-          - name: Check identifiers with default storage
-            cmd: msrv-identifiers
-
-          - name: Check identifiers with Arc storage
-            cmd: msrv-identifiers Arc
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
@@ -63,49 +60,31 @@ jobs:
       - name: Install MSRV toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          # keep in sync with README.md, the root Cargo.toml and xtask/src/ci.rs
+          # Keep in sync with workspace.package.rust-version in root Cargo.toml
           toolchain: "1.89"
 
       - uses: Swatinem/rust-cache@v2
         with:
-          # A stable compiler update should automatically not reuse old caches.
-          # Add the MSRV as a stable cache key too so bumping it also gets us a
-          # fresh cache.
           shared-key: msrv1.89
 
-      - name: Get xtask
-        uses: actions/cache@v5
-        with:
-          path: target/debug/xtask
-          key: xtask-${{ hashFiles('Cargo.toml', 'xtask/src/**', 'xtask/Cargo.toml') }}
+      - name: Check with default features
+        run: cargo check --workspace
 
-      - name: Run checks
-        run: target/debug/xtask ci ${{ matrix.cmd }}
+      - name: Check with all features
+        run: cargo check --workspace --all-features
 
-  stable:
-    name: Rust Stable / ${{ matrix.name }}
-    needs: xtask
+  test:
+    name: Test / ${{ matrix.name }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
-          - name: Check All Features
-            cmd: stable-all
-
-          - name: Check Common
-            cmd: stable-common
-
-          - name: Check Benchmarks
-            cmd: stable-benches
-
-          - name: Run Tests
-            cmd: test-all
-
-          - name: Run Compat Tests
-            cmd: test-compat
-
-          - name: Run Doc Tests
-            cmd: test-doc
+          - name: Default Features
+            args: --workspace
+          - name: All Features
+            args: --workspace --all-features
+          - name: Doc Tests
+            args: --workspace --doc
 
     steps:
       - name: Checkout repo
@@ -116,133 +95,20 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Get xtask
-        uses: actions/cache@v5
-        with:
-          path: target/debug/xtask
-          key: xtask-${{ hashFiles('Cargo.toml', 'xtask/src/**', 'xtask/Cargo.toml') }}
+      - name: Run tests
+        run: cargo test ${{ matrix.args }}
 
-      - name: Run checks
-        run: target/debug/xtask ci ${{ matrix.cmd }}
-
-  nightly:
-    name: Rust Nightly / ${{ matrix.name }}
-    needs: xtask
+  build-release:
+    name: Build (release)
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - name: Check Formatting
-            cmd: fmt
-            components: rustfmt
-
-          - name: Full Features
-            cmd: nightly-full
-
-          - name: All Features
-            cmd: nightly-all
-
-          - name: Clippy Default Features
-            cmd: clippy-default
-            components: clippy
-
-          - name: Clippy Client API Features
-            cmd: clippy-api-client
-            components: clippy
-
-          - name: Clippy Server API Features
-            cmd: clippy-api-server
-            components: clippy
-
-          - name: Clippy All Features
-            cmd: clippy-all
-            components: clippy
-
-          - name: Clippy WASM
-            cmd: clippy-wasm
-            targets: wasm32-unknown-unknown
-            components: clippy
-
-          - name: Clippy Benchmarks
-            cmd: clippy-benches
-            components: clippy
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
 
-      - name: Install rust nightly toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.NIGHTLY }}
-          components: ${{ matrix.components }}
-          targets: ${{ matrix.targets }}
+      - name: Install rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Get xtask
-        uses: actions/cache@v5
-        with:
-          path: target/debug/xtask
-          key: xtask-${{ hashFiles('Cargo.toml', 'xtask/src/**', 'xtask/Cargo.toml') }}
-
-      - name: Run checks
-        run: target/debug/xtask ci ${{ matrix.cmd }}
-
-  docs:
-    name: Docs
-    needs: xtask
-    runs-on: ubuntu-latest
-
-    permissions:
-      actions: read
-      contents: read
-      pages: write
-      id-token: write
-
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v6
-
-      - name: Install nightly rust toolchain
-        # Nightly needed for use of unstable options
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.NIGHTLY }}
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Get xtask
-        uses: actions/cache@v5
-        with:
-          path: target/debug/xtask
-          key: xtask-${{ hashFiles('Cargo.toml', 'xtask/src/**', 'xtask/Cargo.toml') }}
-
-      - name: Build docs
-        run: target/debug/xtask doc --deny-warnings
-
-      - name: Remove .lock file
-        run: rm target/doc/.lock
-
-      - name: Compress docs
-        if: github.event_name == 'pull_request'
-        run: |
-          tar --zstd -cf docs.tar.zstd -C target doc
-
-      - name: Upload docs as artifact
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v7
-        with:
-          name: docs
-          path: docs.tar.zstd
-          archive: false
-
-      - name: Upload docs as pages artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: target/doc
-
-      - name: Deploy to GitHub Pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/deploy-pages@v4
+      - name: Build release
+        run: cargo build --workspace --release

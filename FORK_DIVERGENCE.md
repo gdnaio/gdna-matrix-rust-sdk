@@ -33,17 +33,46 @@ opening a PR against `ruma/ruma`.
 
 ## Workspace changes from upstream
 
-_(To be filled in during Phase 5 — Workspace Cleanup.)_
-
-Planned: trim root `Cargo.toml` `members` to `ruma-common`, `ruma-client-api`,
-`ruma-federation-api` (+ `ruma-signatures` if compatible). Candidates for
-removal: `ruma-client` (full client implementation, not needed for a
-homeserver), `ruma-appservice-api` (deferred until application-service
-support is needed).
+Root `Cargo.toml` `members` changed from the glob `["crates/*", "xtask"]`
+(all 13 crates + build tooling) to an explicit 8-crate list. `xtask` (CI/dev
+tooling, not a library) is dropped entirely — it isn't needed to build or
+consume the kept crates and pulls in extra build-time-only tooling deps.
 
 ## Kept / excluded crates and rationale
 
-_(To be filled in during Phase 5.)_
+**Kept (8):**
+
+| Crate | Why |
+|---|---|
+| `ruma-common` | Core Matrix types (identifiers, events base types, serialization). Required by everything. |
+| `ruma-macros` | Proc-macro crate. **Hard build dependency of `ruma-common`** — not optional, the plan's original crate list omitted this transitive requirement. |
+| `ruma-identifiers-validation` | ID validation logic. **Hard build dependency of both `ruma-common` and `ruma-macros`.** |
+| `ruma-events` | Room/state event type definitions. **Hard dependency of `ruma-client-api`, `ruma-federation-api`, `ruma-signatures`, and `ruma-state-res`** — the original plan didn't list it, but nothing above it builds without it. |
+| `ruma-client-api` | Client-Server API request/response types. Explicitly requested in the plan. |
+| `ruma-federation-api` | Server-Server (federation) API request/response types. Explicitly requested in the plan. |
+| `ruma-signatures` | Ed25519 signing/verification for event and request signing — required for federation PDU signature validation (security-critical per project policy). Explicitly requested in the plan ("if compatible" — confirmed compatible). |
+| `ruma-state-res` | State resolution v2 algorithm (room version v10+). **Added beyond the original plan's crate list** at explicit user request during Phase 5 — a homeserver handling federation on room v10+ needs this for deterministic conflict resolution of room state. No dependency conflicts with the other 7; verified via `cargo build --release`. |
+
+**Excluded (5):**
+
+| Crate | Why excluded |
+|---|---|
+| `ruma` | Umbrella/re-export crate pulling in every other crate (including all excluded ones below) as optional features. Not needed — we depend on the specific crates directly. |
+| `ruma-html` | Optional HTML sanitization helper for `m.room.message` formatted bodies. Feature-gated, not required for core protocol types. Can be added later if rich-text rendering is needed. |
+| `ruma-appservice-api` | Application Service API types. Deferred per plan — no AS support planned initially. |
+| `ruma-state-res` | ~~Excluded~~ — see Kept table above; added back in during Phase 5. |
+| `ruma-push-gateway-api` | Push notification gateway types. Not needed for core homeserver federation/C-S functionality. |
+| `ruma-identity-service-api` | Identity Service (3PID lookup) API types. Not needed initially; add later if 3PID/identity-server integration is required. |
+
+Note: no separate `ruma-client` crate exists in this workspace — upstream's
+full client implementation lives in a separate repository
+(`ruma/ruma-client`), not in `ruma/ruma`'s workspace, so there was nothing
+to exclude here despite the plan mentioning it.
+
+`workspace.dependencies` entries for `ruma-appservice-api` and `ruma-html`
+remain declared (unused, harmless) since Cargo does not error on unused
+workspace-dependency declarations; removing them is cosmetic cleanup, not
+a build requirement.
 
 ## Custom code changes
 

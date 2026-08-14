@@ -38,3 +38,21 @@ status without conflict markers but broke at build time.
   FORK_DIVERGENCE.md). Crate versions at fork point: `ruma-common` 0.19.0,
   `ruma-client-api` 0.24.0, `ruma-federation-api` 0.15.0, `ruma-signatures`
   0.21.0, `ruma-events` 0.34.0.
+
+## 2026-08-14 — Dependency audit and workspace trim (Phases 4-5)
+
+- **Dependency audit:** `cargo tree` + `cargo license` run against full
+  upstream workspace (~377 crates). No GPL/AGPL/proprietary licenses found.
+  2 crates under MPL-2.0 (`as_variant`, `assert_matches2`) and 1 under
+  CDLA-Permissive-2.0 (`webpki-root-certs`, CA cert data) flagged and
+  reviewed — no copyleft obligation triggered since these are unmodified
+  external dependencies. Full breakdown in `DEPENDENCIES.md`.
+- **Workspace trim:** Root `Cargo.toml` `members` changed from glob
+  (`crates/*` + `xtask`, 13 crates) to explicit 8-crate list: `ruma-common`,
+  `ruma-macros`, `ruma-identifiers-validation`, `ruma-events`,
+  `ruma-client-api`, `ruma-federation-api`, `ruma-signatures`,
+  `ruma-state-res`. The latter added beyond the original plan at explicit
+  user request (needed for room v10+ state resolution in federation).
+  `cargo build --release` verified clean on the trimmed workspace.
+- **Conflicts:** None — this is a scope/trim change on the fork's own
+  workspace config, not an upstream merge.

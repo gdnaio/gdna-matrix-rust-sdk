@@ -1,7 +1,15 @@
 [workspace]
-members = ["crates/*", "xtask"]
-# Only compile / check / document the public crates by default
-default-members = ["crates/*"]
+members = [
+    "crates/ruma-common",
+    "crates/ruma-macros",
+    "crates/ruma-identifiers-validation",
+    "crates/ruma-events",
+    "crates/ruma-client-api",
+    "crates/ruma-federation-api",
+    "crates/ruma-signatures",
+    "crates/ruma-state-res",
+]
+default-members = ["crates/ruma-common", "crates/ruma-client-api", "crates/ruma-federation-api", "crates/ruma-signatures", "crates/ruma-state-res"]
 resolver = "3"
 
 [workspace.package]
