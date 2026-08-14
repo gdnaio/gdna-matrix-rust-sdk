@@ -56,3 +56,23 @@ status without conflict markers but broke at build time.
   `cargo build --release` verified clean on the trimmed workspace.
 - **Conflicts:** None — this is a scope/trim change on the fork's own
   workspace config, not an upstream merge.
+
+## 2026-08-14 — First CI run, cargo-sort fix, branch protection (Phase 6 close-out)
+
+- **First CI run:** Fork's GitHub Actions were gated behind GitHub's
+  one-time "enable workflows on this fork" confirmation (required manual
+  click in the web UI; no API/CLI bypass exists). Once enabled, the first
+  `push`-triggered run surfaced a real finding: `Style / External Tools`
+  failed because `cargo-sort` had never run against this workspace before —
+  root `Cargo.toml`'s `members`/`default-members` lists weren't
+  alphabetized, and `ruma-client-api/Cargo.toml` had a stray blank line
+  between feature entries (pre-existing upstream artifact). Fixed via
+  `cargo sort --workspace --grouped`; both changes are non-semantic
+  (confirmed via `cargo build --workspace`).
+- **Branch protection:** Applied to `main` requiring all 8 CI jobs
+  (Formatting, Clippy, MSRV (1.89), Test / Default Features, Test / All
+  Features, Test / Doc Tests, Build (release), Style / External Tools) to
+  pass, `strict` mode (branch must be up to date before merge), and
+  force-push/branch-deletion disabled.
+- Added `workflow_dispatch` trigger to `ci.yml` to allow manual CI runs
+  going forward without requiring a fresh push.
