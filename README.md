@@ -1,3 +1,15 @@
+# gdna-matrix-sdk
+
+> **This is a fork of [Ruma](https://github.com/ruma/ruma), copyright the Ruma
+> contributors, licensed under [MIT](LICENSE).** It is maintained independently
+> to support GDNA's Matrix homeserver implementation. See
+> [FORK_DIVERGENCE.md](FORK_DIVERGENCE.md) for what has changed from upstream
+> and why, and [SYNC_LOG.md](SYNC_LOG.md) for the upstream merge history.
+>
+> Original project README follows.
+
+---
+
 # Ruma – Your home in Matrix
 
 A set of [Rust] crates (libraries) for interacting with the [Matrix] chat
