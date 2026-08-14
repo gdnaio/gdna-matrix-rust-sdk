@@ -35,7 +35,6 @@ compat-get-3pids = []
 # Accept `message` as an alias for `error` in `upload_signatures::v3::Failure`,
 # since that's what Synapse sends.
 compat-upload-signatures = []
-
 # unstable: by using any of the below features, you opt out of all semver guarantees
 #           that Ruma otherwise provides!
 
