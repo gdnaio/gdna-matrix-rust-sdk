@@ -491,6 +491,64 @@ mod tests {
         assert_to_canonical_json_eq!(t, expected.into());
     }
 
+    /// Matrix spec canonical JSON examples, pinned to
+    /// <https://spec.matrix.org/latest/appendices/#canonical-json>.
+    ///
+    /// `check_canonical_sorts_keys` above already covers the `auth`/`mxid` example. These cover
+    /// the remaining published examples: empty object, basic key sort, Unicode key sort and
+    /// string content, `\u` escape decoding, and `null`.
+    ///
+    /// The spec's `-0`/`1e10` example is intentionally NOT reproduced here — see
+    /// `spec_example_numeric_normalization_diverges_by_design` below for why.
+    #[test]
+    fn spec_examples_canonical_json() {
+        let cases: &[(serde_json::Value, &str)] = &[
+            (json!({}), "{}"),
+            (json!({"one": 1, "two": "Two"}), r#"{"one":1,"two":"Two"}"#),
+            (json!({"b": "2", "a": "1"}), r#"{"a":"1","b":"2"}"#),
+            (json!({"a": "日本語"}), r#"{"a":"日本語"}"#),
+            (json!({"本": 2, "日": 1}), r#"{"日":1,"本":2}"#),
+            (json!({"a": "\u{65E5}"}), r#"{"a":"日"}"#),
+            (json!({"a": null}), r#"{"a":null}"#),
+        ];
+
+        for (input, expected) in cases {
+            let canonical: CanonicalJsonValue = input.clone().try_into().unwrap();
+            assert_eq!(to_json_string(&canonical).unwrap(), *expected, "input: {input}");
+        }
+    }
+
+    /// The spec's canonical JSON examples include:
+    ///
+    /// ```json
+    /// { "a": -0, "b": 1e10 }
+    /// ```
+    ///
+    /// expected to normalize to `{"a":0,"b":10000000000}`. This assumes a JSON parser (like
+    /// Python's `json` module, used by the spec's own reference implementation) that classifies
+    /// whole-valued floats as integers during parsing.
+    ///
+    /// `serde_json::Value` does not do this: both `-0` and `1e10` are parsed as `f64`
+    /// (`serde_json::Number::is_f64()` returns `true` for both), not `i64`/`u64`, regardless of
+    /// whether the value is mathematically a whole number. Ruma's `TryFrom<JsonValue> for
+    /// CanonicalJsonValue` correctly rejects true floats per the spec's stated intent ("Float
+    /// values are not permitted by this encoding") — so this input produces
+    /// `CanonicalJsonError::InvalidType("float")` instead of silently coercing to an integer.
+    ///
+    /// This is the safer behavior for a security-critical path: signing code should refuse
+    /// ambiguous numeric input rather than guess at a canonical integer representation. Values
+    /// that are meant to be integers should be constructed as integers (`json!(0)`, not
+    /// `json!(-0)` or `json!(1e10)`) by callers before reaching this layer. Flagged in
+    /// `FORK_DIVERGENCE.md` as a documented, intentional deviation from the spec's literal
+    /// worked example — not a correctness bug in this fork.
+    #[test]
+    fn spec_example_numeric_normalization_diverges_by_design() {
+        let input = json!({"a": -0, "b": 1e10});
+        let result: Result<CanonicalJsonValue, _> = input.try_into();
+        assert_matches!(result, Err(CanonicalJsonError::InvalidType(t)));
+        assert_eq!(t, "float");
+    }
+
     #[test]
     fn to_canonical_value_out_of_range_int() {
         #[derive(Debug, serde::Serialize)]

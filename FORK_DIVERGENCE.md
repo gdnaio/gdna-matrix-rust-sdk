@@ -76,9 +76,10 @@ a build requirement.
 
 ## Custom code changes
 
-_(None yet — fork is currently an unmodified mirror of upstream `main` at the
-commit above. Log any divergent code changes here as they land, with
-rationale and the commit(s) involved.)_
+- **2026-08-14 — Canonical JSON spec-vector regression tests** (`crates/ruma-common/src/canonical_json.rs`): Added `spec_examples_canonical_json` pinning 7 of the 9 published Matrix spec canonical-JSON examples (empty object, key sort, Unicode key sort/content, `\u` escape decoding, `null`) that weren't previously covered verbatim (one, the `auth`/`mxid` example, was already covered by the pre-existing `check_canonical_sorts_keys` test).
+
+  **Known, intentional divergence from the spec's literal worked example:** the spec's `{"a": -0, "b": 1e10}` → `{"a":0,"b":10000000000}` example assumes a JSON parser that classifies whole-valued floats as integers during parsing (true of Python's `json` module, the spec's reference implementation). `serde_json::Value` does not do this — both `-0` and `1e10` parse as `f64` regardless of whether the value is a whole number. Ruma's `TryFrom<JsonValue> for CanonicalJsonValue` correctly rejects true floats per the spec's own stated intent ("Float values are not permitted by this encoding"), so this specific input produces `CanonicalJsonError::InvalidType("float")` rather than silently coercing to an integer. This is documented as a deliberate choice, not a bug: refusing ambiguous numeric input is the safer behavior on a security-critical signing path. Test: `spec_example_numeric_normalization_diverges_by_design`, same file. Callers must construct genuine integers (`json!(0)`, not `json!(-0)` or `json!(1e10)`) before values reach canonical-JSON serialization.
+  - Ed25519 signing/verification against the spec's official JSON Signing and Event Signing test vectors (signing key seed, expected signatures) is already covered by pre-existing `ruma-signatures` doc-tests (`sign_json`, `sign_event`, `hash_and_sign_event`, `verify_event`, `verify_json`) — confirmed passing, no new tests needed for those vectors.
 
 ## Sync cadence
 

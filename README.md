@@ -66,6 +66,73 @@ homeservers based on Ruma **should not** advertise support for them.
 Various changes from in-progress or finished MSCs are also implemented, gated
 behind the `unstable-mscXXXX` (where `XXXX` is the MSC number) Cargo features.
 
+## Usage example
+
+Add as a path dependency from a sibling Rust project (e.g. a `gdna-matrix`
+homeserver crate):
+
+```toml
+[dependencies]
+ruma-common = { path = "../gdna-matrix-sdk/crates/ruma-common" }
+ruma-client-api = { path = "../gdna-matrix-sdk/crates/ruma-client-api" }
+ruma-federation-api = { path = "../gdna-matrix-sdk/crates/ruma-federation-api" }
+ruma-signatures = { path = "../gdna-matrix-sdk/crates/ruma-signatures" }
+ruma-state-res = { path = "../gdna-matrix-sdk/crates/ruma-state-res" }
+```
+
+Minimal round-trip example — canonical JSON serialize/deserialize (the form
+used for event signing):
+
+```rust
+use ruma_common::{CanonicalJsonObject, CanonicalJsonValue};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let event = serde_json::json!({
+        "room_id": "!x:example.org",
+        "sender": "@alice:example.org",
+        "type": "m.room.message",
+        "content": { "body": "hello" },
+    });
+
+    // Convert to CanonicalJsonValue: sorted keys, no whitespace, UTF-8.
+    let canonical: CanonicalJsonObject = match CanonicalJsonValue::try_from(event)? {
+        CanonicalJsonValue::Object(obj) => obj,
+        _ => unreachable!(),
+    };
+
+    let serialized = serde_json::to_string(&canonical)?;
+    println!("{serialized}");
+    // {"content":{"body":"hello"},"room_id":"!x:example.org","sender":"@alice:example.org","type":"m.room.message"}
+
+    // Round-trip back.
+    let deserialized: CanonicalJsonObject = serde_json::from_str(&serialized)?;
+    assert_eq!(canonical, deserialized);
+
+    Ok(())
+}
+```
+
+For Ed25519 event signing, see [`ruma_signatures::hash_and_sign_event`
+docs](https://docs.rs/ruma-signatures) — this fork's `FORK_DIVERGENCE.md`
+and `crates/ruma-common/src/canonical_json.rs` test module document the
+canonical-JSON spec-vector validation this fork performs.
+
+## Consumer integration status
+
+- **`gdna-matrix`** (homeserver, Rust): not yet a Cargo project (spec
+  scaffolding only, no `Cargo.toml` as of this writing). Path-dependency
+  verification is blocked until that project has a buildable crate to test
+  against — this is tracked as a prerequisite in that project's own setup,
+  not a defect here.
+- **`gdna-matrix-client`**: this is a **TypeScript/React** web client
+  (Vite, already depends on the upstream `matrix-js-sdk` npm package for
+  protocol handling), not a Rust project. It cannot consume this Rust SDK
+  as a path dependency — there is no FFI/WASM binding layer between them,
+  and none was scoped for this fork. Verifying it "compiles against
+  ruma-common/client-api" is not applicable; flagging this as a plan
+  assumption that doesn't match the actual repo, not something to route
+  around.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
