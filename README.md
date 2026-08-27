@@ -1,4 +1,4 @@
-# gdna-matrix-sdk
+# gdna-matrix-rust-sdk
 
 > **This is a fork of [Ruma](https://github.com/ruma/ruma), copyright the Ruma
 > contributors, licensed under [MIT](LICENSE).** It is maintained independently
