@@ -1,6 +1,6 @@
 # Fork Divergence
 
-This document tracks how `gdna-matrix-sdk` differs from upstream
+This document tracks how `gdna-matrix-rust-sdk` differs from upstream
 [`ruma/ruma`](https://github.com/ruma/ruma), and why. Update this file
 whenever a change is made that is not a straight upstream merge.
 
@@ -8,7 +8,14 @@ whenever a change is made that is not a straight upstream merge.
 
 - Forked from `ruma/ruma` at commit `2f4413428` (upstream `main`, 2026-08-14).
 - License: MIT, retained unmodified. See [LICENSE](LICENSE).
-- Fork created via `gh repo fork ruma/ruma --org gdnaio --fork-name gdna-matrix-sdk`.
+- Fork created via `gh repo fork ruma/ruma --org gdnaio --fork-name gdna-matrix-sdk`,
+  then renamed to `gdna-matrix-rust-sdk` on 2026-08-27 (commit `9afae7b36`,
+  see [SYNC_LOG.md](SYNC_LOG.md)). The rename commit changed only this
+  repository's name and one line of `README.md`; no reason was recorded at
+  the time, and none is asserted here — a plausible guess (disambiguating
+  from a sibling `gdna-matrix-js-sdk` fork in the same workspace) is not
+  the same as a documented one, and this file only states what the commit
+  history actually shows.
 
 ## Purpose
 
@@ -53,16 +60,21 @@ consume the kept crates and pulls in extra build-time-only tooling deps.
 | `ruma-signatures` | Ed25519 signing/verification for event and request signing — required for federation PDU signature validation (security-critical per project policy). Explicitly requested in the plan ("if compatible" — confirmed compatible). |
 | `ruma-state-res` | State resolution v2 algorithm (room version v10+). **Added beyond the original plan's crate list** at explicit user request during Phase 5 — a homeserver handling federation on room v10+ needs this for deterministic conflict resolution of room state. No dependency conflicts with the other 7; verified via `cargo build --release`. |
 
-**Excluded (5):**
+**Excluded (4):**
 
 | Crate | Why excluded |
 |---|---|
 | `ruma` | Umbrella/re-export crate pulling in every other crate (including all excluded ones below) as optional features. Not needed — we depend on the specific crates directly. |
-| `ruma-html` | Optional HTML sanitization helper for `m.room.message` formatted bodies. Feature-gated, not required for core protocol types. Can be added later if rich-text rendering is needed. |
+| `ruma-html` | Optional HTML sanitization helper for `m.room.message` formatted bodies. Not a direct workspace member, but pulled in transitively as a path dependency of `ruma-events`'s optional `html` feature — `cargo metadata` resolves it as a de facto 9th package despite this table listing it as excluded. Feature-gated in `ruma-events` itself, so it costs nothing unless that feature is enabled. |
 | `ruma-appservice-api` | Application Service API types. Deferred per plan — no AS support planned initially. |
-| `ruma-state-res` | ~~Excluded~~ — see Kept table above; added back in during Phase 5. |
 | `ruma-push-gateway-api` | Push notification gateway types. Not needed for core homeserver federation/C-S functionality. |
 | `ruma-identity-service-api` | Identity Service (3PID lookup) API types. Not needed initially; add later if 3PID/identity-server integration is required. |
+
+`ruma-state-res` was excluded in the original plan and added back into the
+**Kept** table above during Phase 5 at explicit user request — it is not
+listed here a second time; an earlier version of this document listed it
+in both tables (struck through in this one), which was a genuine
+inconsistency in the document rather than a real dual state of the crate.
 
 Note: no separate `ruma-client` crate exists in this workspace — upstream's
 full client implementation lives in a separate repository
@@ -75,6 +87,29 @@ workspace-dependency declarations; removing them is cosmetic cleanup, not
 a build requirement.
 
 ## Custom code changes
+
+- **2026-09-02 — Documentation correction and doc-build tooling fix.**
+  `cargo xtask doc` (the documented way to build this fork's rustdoc)
+  broke silently after the Phase 5 workspace trim dropped `xtask` from
+  `members` — the `.cargo/config.toml` alias survived pointing at a
+  package that no longer existed. Replaced with plain `cargo doc`/
+  `cargo docs-strict` aliases that reproduce the same
+  `--enable-index-page --cfg docsrs` behaviour without needing `xtask`
+  restored, matching the trim's own intent rather than reversing it.
+  Corrected three stale/false claims discovered by direct
+  investigation: `README.md`'s usage example named a nonexistent sibling
+  directory (`../gdna-matrix-sdk/...`, pre-rename) and omitted that
+  `gdna-matrix` actually consumes this fork via a pinned **git**
+  dependency, not a path dependency; `README.md`'s consumer-integration
+  status claimed `gdna-matrix` was "not yet a Cargo project" when it is a
+  real, 119-import-site consumer; and this file's own Kept/Excluded
+  tables listed `ruma-state-res` in both, a genuine internal
+  contradiction rather than a real dual state. `DEPENDENCIES.md` still
+  reports the pre-trim, full-upstream audit numbers and says so
+  explicitly now, rather than the previous text's false claim that the
+  trim would leave only 4 crates (it kept 8) — re-running the audit
+  against the trimmed workspace is separate, not-yet-done follow-up
+  work, named here rather than silently assumed complete.
 
 - **2026-08-14 — Canonical JSON spec-vector regression tests** (`crates/ruma-common/src/canonical_json.rs`): Added `spec_examples_canonical_json` pinning 7 of the 9 published Matrix spec canonical-JSON examples (empty object, key sort, Unicode key sort/content, `\u` escape decoding, `null`) that weren't previously covered verbatim (one, the `auth`/`mxid` example, was already covered by the pre-existing `check_canonical_sorts_keys` test).
 

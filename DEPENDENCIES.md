@@ -1,6 +1,6 @@
 # Dependencies
 
-Compliance artifact for `gdna-matrix-sdk`'s dependency graph. Generated via
+Compliance artifact for `gdna-matrix-rust-sdk`'s dependency graph. Generated via
 `cargo tree` and `cargo license` against the full (pre-trim) upstream
 workspace at fork point (`2f4413428`).
 
@@ -16,9 +16,17 @@ cargo license --json                            # machine-readable, for tooling
 
 - **Total resolved crates:** ~377 (pre-trim, full upstream workspace including
   `ruma-client`, `uniffi` FFI bindings, `xtask`, and dev/test-only deps).
-  This count will drop after Phase 5 trims the workspace to
-  `ruma-common`, `ruma-client-api`, `ruma-federation-api`, and
-  `ruma-signatures`.
+  This count dropped after Phase 5 trimmed the workspace to its current
+  8 members (`ruma-common`, `ruma-macros`, `ruma-identifiers-validation`,
+  `ruma-events`, `ruma-client-api`, `ruma-federation-api`,
+  `ruma-signatures`, `ruma-state-res` — see `FORK_DIVERGENCE.md`'s Kept
+  table for why each one stayed), but this document has not been
+  regenerated against the trimmed workspace since — the figures below are
+  still the pre-trim, full-upstream audit. Re-running `cargo tree`/
+  `cargo license` against the current 8-crate workspace and updating this
+  file is tracked as separate follow-up work, not done as part of this
+  documentation pass (this pass fixed what the document CLAIMED, not what
+  it never re-measured).
 - **GPL/AGPL/proprietary findings:** None.
 - **Copyleft findings requiring attention:** 2 crates under MPL-2.0
   (`as_variant`, `assert_matches2`) — see below. File-level copyleft only

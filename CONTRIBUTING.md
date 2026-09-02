@@ -1,5 +1,36 @@
 # Contributing
 
+> **This is `gdna-matrix-rust-sdk`, a fork of [Ruma](https://github.com/ruma/ruma).**
+> Everything below this banner is **upstream Ruma's own `CONTRIBUTING.md`,
+> unmodified** — it addresses contributing to `ruma/ruma` directly (its
+> issue tracker, its chat rooms, its PR process), not this fork.
+>
+> **If you are working on this fork itself** (fixing something specific to
+> GDNA's homeserver use of it, syncing from upstream, adjusting the
+> workspace trim): the coding style, testing, and LLM-contributions
+> guidance below still applies — those are the same code and the same
+> quality bar. What does NOT apply: opening issues/PRs against
+> `ruma/ruma`'s tracker for fork-local work, and joining upstream's chat
+> rooms for support on something specific to this fork (ask in this
+> fork's own project channels instead). See
+> [FORK_DIVERGENCE.md](FORK_DIVERGENCE.md) for what has actually changed
+> here and why, and [`docs/USAGE.md`](docs/USAGE.md) for how `gdna-matrix`
+> actually consumes this fork.
+>
+> **On the LLM Contributions section below specifically:** it bans
+> LLM-generated content in contributions to `ruma/ruma` — MIT permits this
+> fork to be modified by any means, AI-assisted or not, and that ban does
+> not apply to changes made here. It DOES block one specific thing:
+> contributing a fork-local fix back to `ruma/ruma` as an upstream PR if
+> that fix was AI-assisted — such a fix needs a human author/reviewer
+> without AI assistance before it can be submitted upstream. See
+> [FORK_DIVERGENCE.md](FORK_DIVERGENCE.md#upstream-contribution-policy--read-before-submitting-fixes-upstream)
+> for the full reasoning.
+>
+> Original upstream `CONTRIBUTING.md` follows.
+
+---
+
 Welcome! Thanks for looking into contributing to our project!
 
 ## Table of Contents

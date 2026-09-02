@@ -1,5 +1,16 @@
 [alias]
-xtask = "run --package xtask --"
+# Equivalent to upstream's `cargo xtask doc` (xtask/src/doc.rs), inlined as a plain
+# alias rather than restoring the xtask package -- xtask was deliberately trimmed
+# from this fork's workspace (see FORK_DIVERGENCE.md), and `cargo xtask doc` broke
+# silently after that trim: the alias below survived pointing at a package that no
+# longer exists, so it fails with "package(s) 'xtask' not found in workspace" the
+# moment anyone runs it. `--cfg docsrs` is required for the `#[cfg_attr(docsrs, ...)]`
+# doc_cfg feature badges every crate in this workspace declares to actually activate;
+# omitting it silently builds docs with those badges missing, not an error. `-Dwarnings`
+# is intentionally NOT baked in here (upstream's xtask made it an opt-in `--deny-warnings`
+# flag) -- see `docs-strict` below for that variant, used by CI.
+doc = "doc --all-features --no-deps --config \"build.rustdocflags=['--enable-index-page', '-Zunstable-options', '--cfg', 'docsrs']\""
+docs-strict = "doc --all-features --no-deps --config \"build.rustdocflags=['--enable-index-page', '-Zunstable-options', '--cfg', 'docsrs', '-Dwarnings']\""
 
 [doc.extern-map.registries]
 crates-io = "https://docs.rs/"

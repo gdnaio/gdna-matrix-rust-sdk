@@ -68,16 +68,46 @@ behind the `unstable-mscXXXX` (where `XXXX` is the MSC number) Cargo features.
 
 ## Usage example
 
-Add as a path dependency from a sibling Rust project (e.g. a `gdna-matrix`
-homeserver crate):
+See [`docs/USAGE.md`](docs/USAGE.md) for the full picture — which crates
+`gdna-matrix` actually imports and why, the pinned-`rev`-vs-branch
+rationale, and the `[patch]` workflow for local co-development. The short
+version:
+
+`gdna-matrix` (the homeserver) does not consume this via a path dependency —
+it pins these crates as a **git dependency** at a specific commit, in its own
+`Cargo.toml`:
+
+```toml
+[workspace.dependencies]
+ruma-common = { git = "https://github.com/gdnaio/gdna-matrix-rust-sdk.git", rev = "<commit>" }
+ruma-client-api = { git = "https://github.com/gdnaio/gdna-matrix-rust-sdk.git", rev = "<commit>" }
+ruma-federation-api = { git = "https://github.com/gdnaio/gdna-matrix-rust-sdk.git", rev = "<commit>" }
+ruma-signatures = { git = "https://github.com/gdnaio/gdna-matrix-rust-sdk.git", rev = "<commit>" }
+ruma-events = { git = "https://github.com/gdnaio/gdna-matrix-rust-sdk.git", rev = "<commit>" }
+ruma-state-res = { git = "https://github.com/gdnaio/gdna-matrix-rust-sdk.git", rev = "<commit>" }
+```
+
+A pinned `rev`, not a floating `branch`, so an upstream sync into this fork's
+`main` never silently changes what a consumer builds against — bumping the
+pin is a deliberate, reviewable step in the consuming project, the same way a
+`Cargo.lock` update is. See that project's own `README.md` for why the pin
+is a commit rather than a branch, and its `[patch]` recipe for pointing at a
+local checkout of this fork during co-development (edit a crate here,
+`[patch."https://github.com/gdnaio/gdna-matrix-rust-sdk.git"]` it to a local
+path in the consumer, iterate without pushing every change first).
+
+If you are consuming this fork from a **sibling checkout** on the same
+machine rather than pinning a git rev (e.g. for that same local
+co-development workflow, or a from-scratch integration), a path dependency
+works too — point it at this repository's actual current directory name:
 
 ```toml
 [dependencies]
-ruma-common = { path = "../gdna-matrix-sdk/crates/ruma-common" }
-ruma-client-api = { path = "../gdna-matrix-sdk/crates/ruma-client-api" }
-ruma-federation-api = { path = "../gdna-matrix-sdk/crates/ruma-federation-api" }
-ruma-signatures = { path = "../gdna-matrix-sdk/crates/ruma-signatures" }
-ruma-state-res = { path = "../gdna-matrix-sdk/crates/ruma-state-res" }
+ruma-common = { path = "../gdna-matrix-rust-sdk/crates/ruma-common" }
+ruma-client-api = { path = "../gdna-matrix-rust-sdk/crates/ruma-client-api" }
+ruma-federation-api = { path = "../gdna-matrix-rust-sdk/crates/ruma-federation-api" }
+ruma-signatures = { path = "../gdna-matrix-rust-sdk/crates/ruma-signatures" }
+ruma-state-res = { path = "../gdna-matrix-rust-sdk/crates/ruma-state-res" }
 ```
 
 Minimal round-trip example — canonical JSON serialize/deserialize (the form
@@ -119,19 +149,29 @@ canonical-JSON spec-vector validation this fork performs.
 
 ## Consumer integration status
 
-- **`gdna-matrix`** (homeserver, Rust): not yet a Cargo project (spec
-  scaffolding only, no `Cargo.toml` as of this writing). Path-dependency
-  verification is blocked until that project has a buildable crate to test
-  against — this is tracked as a prerequisite in that project's own setup,
-  not a defect here.
+- **`gdna-matrix`** (homeserver, Rust): a real Cargo workspace, and a real
+  consumer of this fork — pinned as a git dependency (see the Usage example
+  above) at `rev = 34e33012f...`, the commit immediately before this repo
+  was renamed from `gdna-matrix-sdk` to `gdna-matrix-rust-sdk`. That pin
+  still resolves today only via GitHub's automatic rename redirect, not
+  because it names the current repository directly — updating it is tracked
+  as separate, deliberate work in `gdna-matrix`'s own history, not
+  something this fork's docs should assume has happened.
+
+  Usage by crate (import-site count in `gdna-matrix`'s own source, not
+  counting this fork's own internals): `ruma_common` 99, `ruma_signatures`
+  20, `ruma_state_res` 11, `ruma_events` 4, `ruma_client_api` 2,
+  `ruma_federation_api` 0 (declared as a dependency, no call sites yet).
+  `gdna-matrix/src/model.rs` re-exports this fork's identifier and event
+  types as the homeserver's own model layer, rather than wrapping them —
+  so a breaking change in `ruma-common`'s public API is a breaking change
+  in `gdna-matrix`'s model layer directly, with no adapter shim between
+  them to absorb it.
 - **`gdna-matrix-client`**: this is a **TypeScript/React** web client
   (Vite, already depends on the upstream `matrix-js-sdk` npm package for
   protocol handling), not a Rust project. It cannot consume this Rust SDK
-  as a path dependency — there is no FFI/WASM binding layer between them,
-  and none was scoped for this fork. Verifying it "compiles against
-  ruma-common/client-api" is not applicable; flagging this as a plan
-  assumption that doesn't match the actual repo, not something to route
-  around.
+  as a path or git dependency — there is no FFI/WASM binding layer between
+  them, and none was scoped for this fork.
 
 ## Contributing
 
